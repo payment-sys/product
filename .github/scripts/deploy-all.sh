@@ -30,7 +30,7 @@ for instance_id in $DEPLOY_INSTANCE_IDS; do
     --region "$AWS_REGION" \
     --instance-ids "$instance_id" \
     --document-name AWS-RunShellScript \
-    --comment "Deploy ${service} image ${IMAGE}" \
+    --comment "Deploy ${service}" \
     --parameters "$parameters" \
     --query 'Command.CommandId' \
     --output text)" || {
