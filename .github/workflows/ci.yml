@@ -31,9 +31,9 @@ jobs:
       - name: Build and test
         run: ./gradlew --no-daemon clean build
 
-      - name: Set up QEMU
+      - name: Prepare Docker image artifact
         if: github.event_name != 'pull_request'
-        uses: docker/setup-qemu-action@v4
+        run: cp build/libs/*-SNAPSHOT.jar docker-app.jar
 
       - name: Set up Docker Buildx
         if: github.event_name != 'pull_request'
@@ -53,5 +53,5 @@ jobs:
         with:
           context: .
           push: true
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/arm64
           tags: ghcr.io/${{ github.repository }}:${{ github.sha }}
