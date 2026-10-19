@@ -48,4 +48,13 @@ sudo env "${compose_env[@]}" docker compose -f "$compose_file" up \
   --wait-timeout 120 \
   "$service"
 
+if [[ "$service" == "app" ]]; then
+  sudo env "${compose_env[@]}" docker compose -f "$compose_file" up \
+    -d \
+    --no-deps \
+    --wait \
+    --wait-timeout 120 \
+    alloy
+fi
+
 echo "${service} is running with ${image}."
