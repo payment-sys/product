@@ -8,6 +8,7 @@ set -Eeuo pipefail
 : "${1:?service name is required}"
 
 service="$1"
+service_name="${2:-$service}"
 host_path="${DEPLOY_PATH:-/home/ubuntu/app}"
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 encoded_script="$(base64 -w0 "${script_dir}/deploy-instance.sh")"
@@ -21,8 +22,8 @@ for instance_id in $DEPLOY_INSTANCE_IDS; do
   fi
 
   printf -v remote_command \
-    'printf %%s %q | base64 -d > /tmp/deploy-instance.sh && chmod 700 /tmp/deploy-instance.sh && sudo bash /tmp/deploy-instance.sh %q %q %q %q %q' \
-    "$encoded_script" "$service" "$host_path" "$IMAGE" "$AWS_REGION" "$DEPLOY_ENV_PARAMETER"
+    'printf %%s %q | base64 -d > /tmp/deploy-instance.sh && chmod 700 /tmp/deploy-instance.sh && sudo bash /tmp/deploy-instance.sh %q %q %q %q %q %q' \
+    "$encoded_script" "$service" "$host_path" "$IMAGE" "$AWS_REGION" "$DEPLOY_ENV_PARAMETER" "$service_name"
   parameters="$(jq -cn --arg command "$remote_command" '{commands: [$command]}')"
 
   echo "Starting ${service} deployment (${IMAGE}) on ${instance_id}"

@@ -74,7 +74,7 @@ jobs:
           DEPLOY_PATH: /home/ubuntu/app
           DEPLOY_ENV_PARAMETER: /product/deploy/${{ github.run_id }}-${{ github.run_attempt }}
           IMAGE: ghcr.io/${{ github.repository }}:${{ inputs.image_tag || github.event.workflow_run.head_sha || github.sha }}
-        run: bash .github/scripts/deploy-all.sh product
+        run: bash .github/scripts/deploy-all.sh app product
 
       - name: Delete deployment environment from SSM
         if: always()
