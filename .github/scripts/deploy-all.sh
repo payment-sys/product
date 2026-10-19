@@ -8,7 +8,7 @@ set -Eeuo pipefail
 : "${1:?service name is required}"
 
 service="$1"
-host_path="${DEPLOY_PATH:-/payment/product}"
+host_path="${DEPLOY_PATH:-/home/ubuntu/app}"
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 encoded_script="$(base64 -w0 "${script_dir}/deploy-instance.sh")"
 failed_instances=()

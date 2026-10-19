@@ -71,7 +71,7 @@ jobs:
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
           DEPLOY_INSTANCE_IDS: ${{ vars.PRODUCT_SERVICE_INSTANCE_IDS }}
-          DEPLOY_PATH: /payment/product
+          DEPLOY_PATH: /home/ubuntu/app
           DEPLOY_ENV_PARAMETER: /product/deploy/${{ github.run_id }}-${{ github.run_attempt }}
           IMAGE: ghcr.io/${{ github.repository }}:${{ inputs.image_tag || github.event.workflow_run.head_sha || github.sha }}
         run: bash .github/scripts/deploy-all.sh product
