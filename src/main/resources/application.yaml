@@ -1,0 +1,98 @@
+server:
+  tomcat:
+    threads:
+      max: 50
+      min-spare: 10
+    accept-count: 100
+    connection-timeout: 2000ms
+    keep-alive-timeout: 5s
+    mbeanregistry:
+      enabled: true
+
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${PRODUCT_MYSQL_URL:${MYSQL_URL}}
+    username: ${PRODUCT_MYSQL_USERNAME:${MYSQL_USERNAME}}
+    password: ${PRODUCT_MYSQL_PASSWORD:${MYSQL_PASSWORD}}
+    hikari:
+      auto-commit: false
+      maximum-pool-size: 18
+      minimum-idle: 18
+      connection-timeout: 1000
+      validation-timeout: 1000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      keepalive-time: 120000
+      register-mbeans: true
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    listener:
+      concurrency: 8
+    producer:
+      acks: all
+      retries: 3
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      properties:
+        enable.idempotence: true
+        max.in.flight.requests.per.connection: 5
+    consumer:
+      group-id: payment-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      properties:
+        max.poll.records: 500
+        fetch.min.bytes: 32768
+        fetch.max.wait.ms: 1000
+    streams:
+      application-id: order-quantity-result-aggregator
+      bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+      properties:
+        processing.guarantee: exactly_once_v2
+        commit.interval.ms: 1000
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        type:
+          json_format_mapper: org.hibernate.type.format.jackson.JacksonJsonFormatMapper
+        connection:
+          provider_disables_autocommit: true
+    open-in-view: false
+
+management:
+  server:
+    port: 8082
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,loggers
+  metrics:
+    tags:
+      application: payment-backend
+    distribution:
+      percentiles-histogram:
+        http.server.requests: false
+
+# Topic: <message type>.<dataset name>.<data name>
+# Group ID: <domain>-<consumer role>
+product:
+  # Kafka 재고 차감 요청 소비 설정
+  quantity-change-consumer:
+    topic: command.product.quantity-change
+    group-id: product-quantity-change-consumer
+  # Kafka 재고 차감 결과 이벤트 생산 설정
+  quantity-change-result-producer:
+    topic: event.product.quantity-change-result
+  # Kafka 재고 차감 결과 이벤트 아웃박스 재발행 스케줄러 설정
+  quantity-change-result-outbox-scheduler:
+    fixed-delay-ms: 30000
+    batch-size: 100
+    retry-delay-seconds: 30

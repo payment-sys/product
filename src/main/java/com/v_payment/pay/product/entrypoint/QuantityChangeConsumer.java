@@ -1,0 +1,42 @@
+package com.v_payment.pay.product.entrypoint;
+
+import com.v_payment.pay.global.meter.KafkaMetrics;
+import com.v_payment.pay.product.application.QuantityChangeBatchConsumeUseCase;
+import com.v_payment.pay.product.config.QuantityChangeConsumerProperties;
+import com.v_payment.pay.product.domain.QuantityChangeMessages;
+import com.v_payment.pay.product.infra.kafka.message.QuantityChangeCommand;
+import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.stereotype.Component;
+import tools.jackson.databind.ObjectMapper;
+
+import java.util.List;
+
+@Component
+@ConditionalOnProperty(name = "app.kafka.listener.enabled", havingValue = "true", matchIfMissing = true)
+@RequiredArgsConstructor
+public class QuantityChangeConsumer {
+    private final ObjectMapper objectMapper;
+    private final QuantityChangeBatchConsumeUseCase quantityChangeBatchConsumeUseCase;
+    private final QuantityChangeConsumerProperties properties;
+    private final KafkaMetrics kafkaMetrics;
+
+    @KafkaListener(
+            topics = "${product.quantity-change-consumer.topic}",
+            groupId = "${product.quantity-change-consumer.group-id}",
+            containerFactory = "quantityChangeBatchKafkaListenerContainerFactory"
+    )
+    public void listen(List<String> message) {
+        kafkaMetrics.recordConsumerProcess(properties.topic(), "product-quantity-change-consumer", () -> {
+            List<QuantityChangeCommand> quantityChangeMessages = parseMessages(message);
+            quantityChangeBatchConsumeUseCase.changeQuantityBatch(QuantityChangeMessages.from(quantityChangeMessages));
+        });
+    }
+
+    private List<QuantityChangeCommand> parseMessages(List<String> messages) {
+        return messages.stream()
+                .map(message -> objectMapper.readValue(message, QuantityChangeCommand.class))
+                .toList();
+    }
+}

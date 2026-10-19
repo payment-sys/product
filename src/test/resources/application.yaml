@@ -1,0 +1,70 @@
+spring:
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    streams:
+      application-id: order-quantity-result-aggregator-test
+      auto-startup: false
+    listener:
+      auto-startup: false
+    producer:
+      acks: all
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+  datasource:
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        type:
+          json_format_mapper: org.hibernate.type.format.jackson.JacksonJsonFormatMapper
+
+app:
+  kafka:
+    listener:
+      enabled: false
+
+payment:
+  recovery-scheduler:
+    fixed-delay-ms: 30000
+    stale-after-seconds: 60
+    batch-size: 100
+  toss:
+    uri: https://api.tosspayments.com/v1/payments/confirm
+    secret: test-secret
+    content-type: application/json
+    timeout: 60
+
+product:
+  quantity-change-consumer:
+    topic: command.product.quantity-change-test
+    group-id: payment-product-test
+  quantity-change-result-producer:
+    topic: event.product.quantity-change-result-test
+  quantity-change-result-outbox-scheduler:
+    fixed-delay-ms: 30000
+    batch-size: 100
+
+order:
+  expiration-scheduler:
+    fixed-delay-ms: 30000
+    expire-after-seconds: 600
+    batch-size: 100
+  quantity-change-producer:
+    topic: command.product.quantity-change-test
+  quantity-change-outbox-scheduler:
+    fixed-delay-ms: 30000
+    batch-size: 100
+  quantity-change-result-consumer:
+    topic: event.product.quantity-change-result-test
+    group-id: payment-order-test
+  quantity-change-result-aggregation:
+    input-topic: event.product.quantity-change-result-test
+    output-topic: event.order.quantity-change-summary-test
+  quantity-change-summary-consumer:
+    topic: event.order.quantity-change-summary-test
+    group-id: payment-order-summary-test

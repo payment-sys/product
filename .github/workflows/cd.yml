@@ -1,0 +1,84 @@
+name: CD - product
+
+on:
+  workflow_run:
+    workflows: [ CI ]
+    types: [ completed ]
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: Existing GHCR image tag (defaults to the current commit SHA)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (GitHub OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Store deployment environment in SSM
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          PARAMETER_NAME: /product/deploy/${{ github.run_id }}-${{ github.run_attempt }}
+          PRODUCT_MYSQL_URL: ${{ secrets.PRODUCT_MYSQL_URL }}
+          PRODUCT_MYSQL_USERNAME: ${{ secrets.PRODUCT_MYSQL_USERNAME }}
+          PRODUCT_MYSQL_PASSWORD: ${{ secrets.PRODUCT_MYSQL_PASSWORD }}
+          KAFKA_BOOTSTRAP_SERVERS: ${{ secrets.KAFKA_BOOTSTRAP_SERVERS }}
+        run: |
+          set -euo pipefail
+          umask 077
+          env_file="$RUNNER_TEMP/product.env"
+          parameter_file="$RUNNER_TEMP/product-parameter.json"
+          test -n "$PRODUCT_MYSQL_URL"
+          test -n "$PRODUCT_MYSQL_USERNAME"
+          test -n "$PRODUCT_MYSQL_PASSWORD"
+          test -n "$KAFKA_BOOTSTRAP_SERVERS"
+          python3 - "$env_file" <<'PY'
+          import os
+          import sys
+
+          names = (
+              "PRODUCT_MYSQL_URL",
+              "PRODUCT_MYSQL_USERNAME",
+              "PRODUCT_MYSQL_PASSWORD",
+              "KAFKA_BOOTSTRAP_SERVERS",
+          )
+          with open(sys.argv[1], "w", encoding="utf-8") as env_file:
+              for name in names:
+                  value = os.environ[name].replace("'", "\\'")
+                  env_file.write(f"{name}='{value}'\n")
+          PY
+          jq -n --arg name "$PARAMETER_NAME" --rawfile value "$env_file" \
+            '{Name:$name, Type:"SecureString", Value:$value, Overwrite:true}' > "$parameter_file"
+          aws ssm put-parameter --region "$AWS_REGION" --cli-input-json "file://$parameter_file"
+
+      - name: Deploy product through SSM
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          DEPLOY_INSTANCE_IDS: ${{ vars.PRODUCT_SERVICE_INSTANCE_IDS }}
+          DEPLOY_PATH: /payment/product
+          DEPLOY_ENV_PARAMETER: /product/deploy/${{ github.run_id }}-${{ github.run_attempt }}
+          IMAGE: ghcr.io/${{ github.repository }}:${{ inputs.image_tag || github.event.workflow_run.head_sha || github.sha }}
+        run: bash .github/scripts/deploy-all.sh product
+
+      - name: Delete deployment environment from SSM
+        if: always()
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          PARAMETER_NAME: /product/deploy/${{ github.run_id }}-${{ github.run_attempt }}
+        run: aws ssm delete-parameter --region "$AWS_REGION" --name "$PARAMETER_NAME" || true
