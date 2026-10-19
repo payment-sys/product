@@ -39,6 +39,9 @@ jobs:
           PRODUCT_MYSQL_USERNAME: ${{ secrets.PRODUCT_MYSQL_USERNAME }}
           PRODUCT_MYSQL_PASSWORD: ${{ secrets.PRODUCT_MYSQL_PASSWORD }}
           KAFKA_BOOTSTRAP_SERVERS: ${{ secrets.KAFKA_BOOTSTRAP_SERVERS }}
+          TEMPO_OTLP_ENDPOINT: ${{ vars.TEMPO_OTLP_ENDPOINT }}
+          LOKI_PUSH_URL: ${{ vars.LOKI_PUSH_URL }}
+          PROMETHEUS_REMOTE_WRITE_URL: ${{ vars.PROMETHEUS_REMOTE_WRITE_URL }}
         run: |
           set -euo pipefail
           umask 077
@@ -57,6 +60,9 @@ jobs:
               "PRODUCT_MYSQL_USERNAME",
               "PRODUCT_MYSQL_PASSWORD",
               "KAFKA_BOOTSTRAP_SERVERS",
+              "TEMPO_OTLP_ENDPOINT",
+              "LOKI_PUSH_URL",
+              "PROMETHEUS_REMOTE_WRITE_URL",
           )
           with open(sys.argv[1], "w", encoding="utf-8") as env_file:
               for name in names:

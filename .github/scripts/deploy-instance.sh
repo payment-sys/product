@@ -36,9 +36,6 @@ compose_env=(
   "SERVICE_NAME=$service_name"
   "INSTANCE_NAME=$instance_name"
   "PRIVATE_IP=$private_ip"
-  "TEMPO_OTLP_ENDPOINT=${TEMPO_OTLP_ENDPOINT:-}"
-  "LOKI_PUSH_URL=${LOKI_PUSH_URL:-}"
-  "PROMETHEUS_REMOTE_WRITE_URL=${PROMETHEUS_REMOTE_WRITE_URL:-}"
 )
 sudo env "${compose_env[@]}" docker compose -f "$compose_file" pull "$service"
 sudo env "${compose_env[@]}" docker compose -f "$compose_file" up \
